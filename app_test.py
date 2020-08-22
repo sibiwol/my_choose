@@ -1,8 +1,26 @@
+from flask import Flask, render_template, jsonify, request
 import requests
 from bs4 import BeautifulSoup
-# URL을 읽어서 HTML를 받아오고,
-url = 'http://www.joara.com/literature/view/book_list.html'
-def get_book_info(page_no):
+from pymongo import MongoClient  # pymongo를 임포트 하기(패키지 인스톨 먼저 해야겠죠?)
+
+app = Flask(__name__)
+
+
+client = MongoClient('localhost', 27017)  # mongoDB는 27017 포트로 돌아갑니다.
+db = client.dbchoose_test # 'dbsparta'라는 이름의 db를 만들거나 사용합니다.
+
+
+# @app.route('/')
+# def home():
+#     return render_template('index.html')
+
+#서버코드
+@app.route('/search', methods=['POST'])
+def post_novels():
+#     # 1. 클라이언트로부터 데이터를 받기
+#     # 2. 스크래핑하기
+    url = 'http://www.joara.com/literature/view/book_list.html'
+    def get_book_info(page_no):
     paginated_url = 'http://www.joara.com/literature/view/book_list.html?page_no=' + str(
         page_no) + '&bookpart=&sl_type=&sl_chkcost=&sl_category=&sl_search=&sl_keyword=&sl_chk=&sl_minchapter=&sl_maxchapter=&sl_redate=&sl_orderby=&sl_othercategory=&list_type=normal&sub_category='
     headers = {
@@ -24,32 +42,17 @@ def get_book_info(page_no):
             continue
         title_div = divs[0]
         content_div = divs[1]
-        author_span = divs[1]
-        img_a = divs[0]
-        # div[1]>p[1]>span[1]author
-        # div[0]>a>img
         title = title_div.find('p').find('a')
         book = {}
         if title is not None:
             # print('<제목여기>')
             # print(title.text)
             book['title'] = title.text
-        author = author_span.find('p').find('span').find('span')
-        # 37오류 AttributeError: 'NoneType' object has no attribute'find'
-        if author is not None:
-            book['author'] = author.text
-            print('<작가여기>')
-            print(author.text)
         content = content_div.find('p')
         if content is not None:
             # print('<콘텐트여기>')
             # print(content.text)
             book['content'] = content.text
-        img = img_a.find('a').find('img')
-        if img is not None:
-            book['img'] = img.img
-            print('<표지여기>')
-            print((img.img))
         if len(book) > 0:
             books.append(book)
     if len(books) > 0:
@@ -58,24 +61,20 @@ def get_book_info(page_no):
         return None
 
 result = get_book_info(1)
-# print('첫 페이지 결과')
-print(result)
-# 위 코드 확인
 
+    # 3. mongoDB에 데이터를 넣기
+db.dbchoose_test.insert_many(result)
 
-
-# 업데이트
-# # 오타가 많으니 이 줄을 복사해서 씁시다!
-# db.dbchoose_test.update_one({'name': '덤블도어'}, {'$set': {'age': 19}})
-# user = db.dbchoose_test.find_one({'name': '덤블도어'})
-# print(user)
+# return jsonify({'result': 'success'})
 #
-# 삭제
-# db.dbchoose_test.delete_all()
 #
-# user = db.dbchoose_.find_all()
-# print(user)
-
-
-
-
+# @app.route('/memo', methods=['GET'])
+# def read_articles():
+#     # 1. mongoDB에서 _id 값을 제외한 모든 데이터 조회해오기 (Read)
+#     result = list(db.articles.find({}, {'_id': 0}))
+#     # 2. articles라는 키 값으로 article 정보 보내주기
+#     return jsonify({'result': 'success', 'articles': result})
+#
+#
+# if __name__ == '__main__':
+#     app.run('0.0.0.0', port=5000, debug=True)
